@@ -10,39 +10,42 @@ namespace Calculator
     public static class YieldCalculation
     {
         // Read the csv file into a list of lists of strings
-        public static List<List<string>> ReadCSV(string filePath)
+        public static List<List<string>> ReadCSV()
         {
+            Console.WriteLine("Input csv file path: ");
+            string filePath = Console.ReadLine();
+
             List<List<string>> listOfLists = new List<List<string>>();
+            bool validFile = File.Exists(filePath);
 
-            if (File.Exists(filePath))
+            while (!validFile)
             {
-                StreamReader reader = new StreamReader(File.OpenRead(filePath));
-                // Read first line and do nothing with it, i.e. skip header
-                reader.ReadLine();
-                while (!reader.EndOfStream)
-                {
-                    var line = reader.ReadLine();
-                    var row = line.Split(',');
-                    List<string> listOfStrings = new List<string>();
-                    foreach (var column in row)
-                    {
-                        if (!string.IsNullOrEmpty(column))
-                        {
-                            listOfStrings.Add(column);
-                        }
-                    }
-
-                    if (listOfStrings != null && listOfStrings.Count > 0)
-                    {
-                        listOfLists.Add(listOfStrings);
-                    }
-
-                }
+                Console.WriteLine("Input csv file doesn't exist, try again:");
+                filePath = Console.ReadLine();
+                validFile = File.Exists(filePath);
             }
-            else
+
+            StreamReader reader = new StreamReader(File.OpenRead(filePath));
+            // Read first line and do nothing with it, i.e. skip header
+            reader.ReadLine();
+            while (!reader.EndOfStream)
             {
-                Console.WriteLine("Input csv file doesn't exist");
-                Environment.Exit(0);
+                var line = reader.ReadLine();
+                var row = line.Split(',');
+                List<string> listOfStrings = new List<string>();
+                foreach (var column in row)
+                {
+                    if (!string.IsNullOrEmpty(column))
+                    {
+                        listOfStrings.Add(column);
+                    }
+                }
+
+                if (listOfStrings != null && listOfStrings.Count > 0)
+                {
+                    listOfLists.Add(listOfStrings);
+                }
+
             }
             return listOfLists;
         }
@@ -94,6 +97,12 @@ namespace Calculator
     {
         static void Main(string[] args)
         {
+
+            // Read cashflow data from provided csv file
+            List<List<string>> cashFlowData;
+            cashFlowData = YieldCalculation.ReadCSV();
+
+
             // Get bond price from user via console input
             Console.WriteLine("Enter a bond price:");
             double bondPrice;
@@ -118,10 +127,6 @@ namespace Calculator
                 pricingDate = Console.ReadLine();
             }
 
-            // Read cashflow data from provided csv file
-            List<List<string>> cashFlowData;
-            cashFlowData = YieldCalculation.ReadCSV(@"C:\Users\tho\Desktop\YTMCalculation\YTMCalculation\FixedIncomeCashflows.csv");
-
             // Read from cashFlowData, do some manipulation and set to two lists
             List<int> paymentDateList = new List<int>();
             List<double> cashFlowList = new List<double>();
@@ -141,7 +146,12 @@ namespace Calculator
 
             double initialGuess = 0.1;
 
-            Console.WriteLine(YieldCalculation.CalculateYield(initialGuess, cashFlow, yearFraction, bondPrice));
+            double yieldToMaturity = YieldCalculation.CalculateYield(initialGuess, cashFlow, yearFraction, bondPrice);
+
+            Console.WriteLine("Yield to Maturity: " + (yieldToMaturity * 100).ToString("#.##") + "%");
+
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey();
         }
     }
 }
