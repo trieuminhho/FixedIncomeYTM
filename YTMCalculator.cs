@@ -6,133 +6,142 @@ using System.Linq;
 
 namespace Calculator
 {
-    public static class YTM
+
+    public static class YieldCalculation
     {
-        public static List<string> ReadCSV(string filePath)
+        // Read the csv file into a list of lists of strings
+        public static List<List<string>> ReadCSV(string filePath)
         {
-            List<string> listA = new List<string>();
-            StreamReader reader = null;
+            List<List<string>> listOfLists = new List<List<string>>();
+
             if (File.Exists(filePath))
             {
-                reader = new StreamReader(File.OpenRead(filePath));
+                StreamReader reader = new StreamReader(File.OpenRead(filePath));
+                // Read first line and do nothing with it, i.e. skip header
+                reader.ReadLine();
                 while (!reader.EndOfStream)
                 {
                     var line = reader.ReadLine();
-                    var values = line.Split(',');
-                    foreach (var item in values)
+                    var row = line.Split(',');
+                    List<string> listOfStrings = new List<string>();
+                    foreach (var column in row)
                     {
-                        if (!string.IsNullOrEmpty(item))
+                        if (!string.IsNullOrEmpty(column))
                         {
-                            listA.Add(item);
+                            listOfStrings.Add(column);
                         }
-
                     }
+
+                    if (listOfStrings != null && listOfStrings.Count > 0)
+                    {
+                        listOfLists.Add(listOfStrings);
+                    }
+
                 }
             }
             else
             {
-                Console.WriteLine("File doesn't exist");
+                Console.WriteLine("Input csv file doesn't exist");
+                Environment.Exit(0);
             }
-            return listA;
+            return listOfLists;
         }
 
-        public static double CalculateYield(double initialGuess, double[] cashflows, double[] yearFrac, double B)
+        // Calculate the months between two dates, we'll assume that the day of the month does not matter 
+        public static int GetMonthDifference(string date1, string date2)
         {
-            double error = 0.000000001;
+            var date1DateTime = DateTime.Parse(date1);
+            var date2DateTime = DateTime.Parse(date2);
+
+            return (date2DateTime.Month - (((date1DateTime.Year - date2DateTime.Year) * 12) + date1DateTime.Month));
+        }
+
+        // Calculate yield using newton's method
+        public static double CalculateYield(double initialGuess, double[] cashFlow, double[] yearFraction, double bondPrice)
+        {
+            double error = 0.0000000001;
             double x_i = initialGuess - 1.0;
             double x_i_next = initialGuess;
 
             double numerator;
             double denominator;
 
+            int maxIterations = 10000;
+            int iterationCount = 0;
+
             while (Math.Abs(x_i_next - x_i) > error)
             {
                 x_i = x_i_next;
-                numerator = cashflows.Zip(yearFrac, (x, y) => (x * Math.Exp(y * -1 * x_i))).Sum();
-                denominator = yearFrac.Zip(cashflows, (x, y) => (x * y * Math.Exp(x * -1 * x_i))).Sum();
-                x_i_next = x_i + (numerator - B) / denominator;
+                // returns SUM( cashFlow(i) * exp(-yearFraction(i) * x_i) )
+                numerator = cashFlow.Zip(yearFraction, (x, y) => (x * Math.Exp(y * -1 * x_i))).Sum();
+
+                // returns SUM( yearFraction(i) * cashFlow(i) * exp(-yearFraction(i) * x_i) )
+                denominator = yearFraction.Zip(cashFlow, (x, y) => (x * y * Math.Exp(x * -1 * x_i))).Sum();
+
+                x_i_next = x_i + (numerator - bondPrice) / denominator;
+
+                // in case of non-convergence we'll stop after max iterations
+                iterationCount++;
+                if (iterationCount > maxIterations)
+                    Console.WriteLine("Exceeded maximum iterations of " + maxIterations);
+                    break;
             }
             return x_i_next;
         }
-
-        public static int GetMonths(string date1, string date2)
-        {
-            var date1_dt = DateTime.Parse(date1);
-            var date2_dt = DateTime.Parse(date2);
-
-            return (date2_dt.Month - (((date1_dt.Year - date2_dt.Year) * 12) + date1_dt.Month));
-        }
-
-
     }
 
     class Program
     {
         static void Main(string[] args)
         {
-            List<string> cashFlowData;
-            cashFlowData = YTM.ReadCSV(@"C:\Users\tho\Desktop\YTMCalculation\YTMCalculation\FixedIncomeCashflows.csv");
-            List<int> PaymentDateList = new List<int>();
-            List<double> CashFlowList = new List<double>();
-
-            int count = 0;
-            int col = 0;
-            int number;
-            double cashFlowTemp=0;
-
-            bool isParsable;
-
-            foreach (var column in cashFlowData)
+            // Get bond price from user via console input
+            Console.WriteLine("Enter a bond price:");
+            double bondPrice;
+            bool bondPriceParsed;
+            bondPriceParsed = Double.TryParse(Console.ReadLine(), out bondPrice);
+            while (!bondPriceParsed || bondPrice < 0.0)
             {
-                count += 1;
-                if(count>3)
-                {
-                    col += 1;
-                    switch (col)
-                    {
-                        case 1:
-                            PaymentDateList.Add(YTM.GetMonths("20/05/2024", column));
-                            break;
-                        case 2:
-                            isParsable = Int32.TryParse(column, out number);
-                            if (isParsable)
-                                cashFlowTemp += number;
-                            break;
-                        case 3:
-                            isParsable = Int32.TryParse(column, out number);
-                            if (isParsable)
-                            {
-                                cashFlowTemp += number;
-                                CashFlowList.Add(cashFlowTemp);
-                            }
-                            cashFlowTemp = 0;
-                            col = 0;
-                            break;
-                    }
-                    
-                }
+                Console.WriteLine("Invalid bond price, try again:");
+                bondPriceParsed = Double.TryParse(Console.ReadLine(), out bondPrice);
             }
 
-            foreach (var i in PaymentDateList)
+            // Get pricing date from user input
+            Console.WriteLine("Enter a pricing date in format: dd/mm/yyyy");
+            string pricingDate;
+            pricingDate = Console.ReadLine();
+
+            // try to parse date string into DateTime, if fail then try again
+            DateTime tempDateTime;
+            while (!DateTime.TryParse(pricingDate, out tempDateTime))
             {
-                Console.WriteLine(i);
-            }
-            foreach (var i in CashFlowList)
-            {
-                Console.WriteLine(i);
+                Console.WriteLine("Invalid datetime, please enter in format dd/mm/yyyy:");
+                pricingDate = Console.ReadLine();
             }
 
-            // use some numbers to illustrate the point
-            // maturities in months
-            int[] maturities = PaymentDateList.ToArray();
-            double[] yearFrac = maturities.Select(i => i / 12.0).ToArray();
-            // bond price
-            double B = 108;
+            // Read cashflow data from provided csv file
+            List<List<string>> cashFlowData;
+            cashFlowData = YieldCalculation.ReadCSV(@"C:\Users\tho\Desktop\YTMCalculation\YTMCalculation\FixedIncomeCashflows.csv");
 
-            // calculate future cashflows
-            double[] cashflows = CashFlowList.ToArray();
+            // Read from cashFlowData, do some manipulation and set to two lists
+            List<int> paymentDateList = new List<int>();
+            List<double> cashFlowList = new List<double>();
+
+            foreach (var row in cashFlowData)
+            {
+                    // Get the months between pricing date and payment date and add to list
+                    paymentDateList.Add(YieldCalculation.GetMonthDifference(pricingDate, row[0]));
+                    // Find total cash flow at each payment date and add to list
+                    cashFlowList.Add(Convert.ToDouble(row[1]) + Convert.ToDouble(row[2]));
+            }
+              
+            double[] cashFlow = cashFlowList.ToArray();
+
+            // Months from pricing date of payment then convert that into fraction years 
+            double[] yearFraction = paymentDateList.ToArray().Select(i => i / 12.0).ToArray();
+
             double initialGuess = 0.1;
-            Console.WriteLine(YTM.CalculateYield(initialGuess, cashflows, yearFrac, B));
+
+            Console.WriteLine(YieldCalculation.CalculateYield(initialGuess, cashFlow, yearFraction, bondPrice));
         }
     }
 }
