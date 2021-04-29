@@ -1,3 +1,3 @@
-C:\Windows\Microsoft.NET\Framework\v3.5\csc.exe YTMCalculator.cs
+C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe YTMCalculator.cs
 
 pause
