@@ -149,7 +149,7 @@ namespace Calculator
 
             double yieldToMaturity = YieldCalculation.CalculateYield(initialGuess, cashFlow, yearFraction, bondPrice);
 
-            Console.WriteLine("Yield to Maturity: " + (yieldToMaturity * 100).ToString("#.##") + "%");
+            Console.WriteLine("Yield to Maturity: " + Math.Round((yieldToMaturity * 100), 2).ToString() + "%");
 
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
