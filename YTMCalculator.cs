@@ -13,6 +13,7 @@ namespace Calculator
         public static List<List<string>> ReadCSV()
         {
             Console.WriteLine("Input csv file path: ");
+            Console.WriteLine("Example: C:\\Users\\tho\\Desktop\\FixedIncomeYTM\\FixedIncomeCashflows.csv");
             string filePath = Console.ReadLine();
 
             List<List<string>> listOfLists = new List<List<string>>();
