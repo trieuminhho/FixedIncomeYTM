@@ -64,7 +64,7 @@ namespace Calculator
         public static double CalculateYield(double initialGuess, double[] cashFlow, double[] yearFraction, double bondPrice)
         {
             double error = 0.0000000001;
-            double x_i = initialGuess - 1.0;
+            double x_i = initialGuess - 0.01;
             double x_i_next = initialGuess;
 
             double numerator;
@@ -92,33 +92,36 @@ namespace Calculator
             }
             return x_i_next;
         }
+
+        public static double CalculatePrice(double[] cashFlow, double[] yearFraction, double yield)
+        {
+            // returns SUM( cashFlow(i) * exp(-yearFraction(i) * x_i) )
+            return cashFlow.Zip(yearFraction, (x, y) => (x * Math.Exp(y * -1 * yield))).Sum();
+        }
     }
 
     class Program
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Calculate YTM or PRICE: [YTM/PRICE]");
+            string calculation = Console.ReadLine();
+            if (calculation != "YTM" && calculation != "PRICE")
+            {
+                Console.WriteLine("Invalid entry, enter what you want to calculate: YTM or PRICE");
+                calculation = Console.ReadLine();
+            }
 
             // Read cashflow data from provided csv file
             List<List<string>> cashFlowData;
             cashFlowData = YieldCalculation.ReadCSV();
 
 
-            // Get bond price from user via console input
-            Console.WriteLine("Enter a bond price:");
-            double bondPrice;
-            bool bondPriceParsed;
-            bondPriceParsed = Double.TryParse(Console.ReadLine(), out bondPrice);
-            while (!bondPriceParsed || bondPrice < 0.0)
-            {
-                Console.WriteLine("Invalid bond price, try again:");
-                bondPriceParsed = Double.TryParse(Console.ReadLine(), out bondPrice);
-            }
-
             // Get pricing date from user input
             Console.WriteLine("Enter a pricing date in format: dd/mm/yyyy");
             string pricingDate;
             pricingDate = Console.ReadLine();
+
 
             // try to parse date string into DateTime, if fail then try again
             DateTime tempDateTime;
@@ -145,11 +148,45 @@ namespace Calculator
             // Months from pricing date of payment then convert that into fraction years 
             double[] yearFraction = paymentDateList.ToArray().Select(i => i / 12.0).ToArray();
 
-            double initialGuess = 0.1;
 
-            double yieldToMaturity = YieldCalculation.CalculateYield(initialGuess, cashFlow, yearFraction, bondPrice);
+            if (calculation == "YTM")
+            {
+                // Get bond price from user via console input
+                Console.WriteLine("Enter a bond price:");
+                double bondPrice;
+                bool bondPriceParsed;
+                bondPriceParsed = Double.TryParse(Console.ReadLine(), out bondPrice);
+                while (!bondPriceParsed || bondPrice < 0.0)
+                {
+                    Console.WriteLine("Invalid bond price, try again:");
+                    bondPriceParsed = Double.TryParse(Console.ReadLine(), out bondPrice);
+                }
 
-            Console.WriteLine("Yield to Maturity: " + Math.Round((yieldToMaturity * 100), 2).ToString() + "%");
+                double initialGuess = 0.02;
+
+                double yieldToMaturity = YieldCalculation.CalculateYield(initialGuess, cashFlow, yearFraction, bondPrice);
+
+                Console.WriteLine("Yield to Maturity at " + pricingDate + ": " + Math.Round((yieldToMaturity * 100), 2).ToString() + "%");
+            }
+            else if (calculation == "PRICE")
+            {
+                // Get bond price from user via console input
+                Console.WriteLine("Enter a yield percentage:");
+                double yieldPercentage;
+                bool yieldParsed;
+                yieldParsed = Double.TryParse(Console.ReadLine(), out yieldPercentage);
+                while (!yieldParsed)
+                {
+                    Console.WriteLine("Invalid yield, try again:");
+                    yieldParsed = Double.TryParse(Console.ReadLine(), out yieldPercentage);
+                }
+
+                double yield = yieldPercentage / 100;
+                double bondPrice = YieldCalculation.CalculatePrice(cashFlow, yearFraction, yield);
+
+                Console.WriteLine("Bond Price at " + pricingDate + ": " + Math.Round((bondPrice ), 2).ToString());
+
+            }
 
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
